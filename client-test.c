@@ -1,6 +1,64 @@
 #include "client.c"
 
-void testOnePacket(char* packet) {
+void readPacketToListRoomsByClient(char *packet) {
+  int shift = 0;
+  int error = ByteBufferGetInt(packet, &shift);
+  int type = ByteBufferGetInt(packet, &shift);
+  int op = ByteBufferGetInt(packet, &shift);
+  int IDprotocol = ByteBufferGetInt(packet, &shift);
+  printf("Error: '%d', Type: '%d', Operation: '%d', Protocol: '%d'", error, type, op, IDprotocol);
+  printf("\n");
+}
+void readPacketToConnectByClient(char *packet) {
+  int shift = 0;
+  int error = ByteBufferGetInt(packet, &shift);
+  int type = ByteBufferGetInt(packet, &shift);
+  int op = ByteBufferGetInt(packet, &shift);
+  int IDprotocol = ByteBufferGetInt(packet, &shift);
+  char *username = ByteBufferGetString(packet, &shift);
+  char *password = ByteBufferGetString(packet, &shift);
+  char *roomName = ByteBufferGetString(packet, &shift);
+  printf("Error: '%d', Type: '%d', Operation: '%d', Protocol: '%d'", error, type, op, IDprotocol);
+  printf(", Username: '%s', Password: '%s', Room name: '%s'\n", username, password, roomName);
+}
+void readPacketToCreateRoomByClient(char *packet) {
+  int shift = 0;
+  int error = ByteBufferGetInt(packet, &shift);
+  int type = ByteBufferGetInt(packet, &shift);
+  int op = ByteBufferGetInt(packet, &shift);
+  int IDprotocol = ByteBufferGetInt(packet, &shift);
+  char *username = ByteBufferGetString(packet, &shift);
+  char *password = ByteBufferGetString(packet, &shift);
+  char *roomName = ByteBufferGetString(packet, &shift);
+  int numberOfUsers = ByteBufferGetInt(packet, &shift);
+  printf("Error: '%d', Type: '%d', Operation: '%d', Protocol: '%d'", error, type, op, IDprotocol);
+  printf(", Username: '%s', Password: '%s', Room name: '%s', Number of users: '%d'\n", username, password, roomName, numberOfUsers);
+}
+void readPacketToSendMessageByClient(char *packet) {
+  int shift = 0;
+  int error = ByteBufferGetInt(packet, &shift);
+  int type = ByteBufferGetInt(packet, &shift);
+  int op = ByteBufferGetInt(packet, &shift);
+  int IDprotocol = ByteBufferGetInt(packet, &shift);
+  char *username = ByteBufferGetString(packet, &shift);
+  char *roomName = ByteBufferGetString(packet, &shift);
+  char *message = ByteBufferGetString(packet, &shift);
+  printf("Error: '%d', Type: '%d', Operation: '%d', Protocol: '%d'", error, type, op, IDprotocol);
+  printf(", Username: '%s', RoomName: '%s', Message: '%s'\n", username, roomName, message);
+}
+void readPacketToExitByClient(char *packet) {
+  int shift = 0;
+  int error = ByteBufferGetInt(packet, &shift);
+  int type = ByteBufferGetInt(packet, &shift);
+  int op = ByteBufferGetInt(packet, &shift);
+  int IDprotocol = ByteBufferGetInt(packet, &shift);
+  char *username = ByteBufferGetString(packet, &shift);
+  char *password = ByteBufferGetString(packet, &shift);
+  printf("Error: '%d', Type: '%d', Operation: '%d', Protocol: '%d'", error, type, op, IDprotocol);
+  printf(", Username: '%s', Password: '%s'\n", username, password);
+}
+
+void testOnePacket(char *packet) {
   int error = getErrorOfPacket(packet);
   if (!error) {
     int op = getOperationOfPacket(packet);

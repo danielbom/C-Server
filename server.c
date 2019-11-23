@@ -88,7 +88,6 @@ void readPacketToExitOfClient(int sd, char* packet) {
   printf(", Username: '%s', Password: '%s'\n", username, password);
 }
 void readPacketOfClient(int sd, char* packet, int size) {
-  showHostInfos(sd);
   if (size < (4 * sizeof(int))) {
     printf("LOG: Malformed packet\n");
     return;
@@ -142,7 +141,7 @@ void initMasterSocket() {
   printf(">>> Server socket listen on port '%d'\n", PORT);
 }
 void loop() {
-  char masterBuffer[BUFFER_SERVER_SIZE + 1];
+  char buffer[BUFFER_SERVER_SIZE + 1];
   int i, maxID = ID;
 
   while (1) {
@@ -187,17 +186,18 @@ void loop() {
     for (i = 0; i < CLIENTS_LIMIT; i++) {
       int sd = CLIENTS_LIST[i];
       if (FD_ISSET(sd, &FD)) {
-        int size = read(sd, masterBuffer, BUFFER_SERVER_SIZE);
+        int size = read(sd, buffer, BUFFER_SERVER_SIZE);
         if (size == 0) {
           printf("Host disconnected\n");
           showHostInfos(sd);
           CLIENTS_LIST[i] = 0;
           break;
-        } else { // Broadcast
+        } else {
+          buffer[size] = 0;
           printf("Broadcast %d\n", size);
-          masterBuffer[size] = 0;
-          printf("Received: '%s'\n", masterBuffer);
-          readPacketOfClient(sd, masterBuffer, size);
+          printf("Received: '%s'\n", buffer);
+          showHostInfos(sd);
+          readPacketOfClient(sd, buffer, size);
           break;
         }
       }

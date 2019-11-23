@@ -10,14 +10,24 @@
 
 #include "utils.server.c"
 
+// Structure
+#define BUFFER_CLIENT_SIZE 512
+
+char SERVER_ADDRESS[16] = "127.0.0.1";
+int SERVER_PORT = 12345;
+
+int CLIENT_SOCKET;
+char CLIENT_BUFFER[BUFFER_CLIENT_SIZE + 1];
+int runningClient = 1;
+
 // Sets
-void setUsernameOnPacket(char* packet, char* user) {
+void setUsernameOnPacket(char *packet, char *user) {
   strncat(packet + (sizeof(int) * 3), user, 63);
 }
-void setPasswordOnPacket(char* packet, char* pass) {
+void setPasswordOnPacket(char *packet, char *pass) {
   strncat(packet + (sizeof(int) * 3) + 64, pass, 63);
 }
-void setNameRoomOnPacket(char* packet, char* room) {
+void setNameRoomOnPacket(char *packet, char *room) {
   strncat(packet + (sizeof(int) * 3) + (64 * 2), room, 63);
 }
 
@@ -106,74 +116,8 @@ void *createPacketToExitByClient(char *username, char *password, int* shift) {
   return buffer;
 }
 
-// Read
-void readPacketToListRoomsByClient(char* packet) {
-  int shift = 0;
-  int error = ByteBufferGetInt(packet, &shift);
-  int type = ByteBufferGetInt(packet, &shift);
-  int op = ByteBufferGetInt(packet, &shift);
-  int IDprotocol = ByteBufferGetInt(packet, &shift);
-  printf("Error: '%d', Type: '%d', Operation: '%d', Protocol: '%d'", error, type, op, IDprotocol);
-  printf("\n");
-}
-void readPacketToConnectByClient(char* packet) {
-  int shift = 0;
-  int error = ByteBufferGetInt(packet, &shift);
-  int type = ByteBufferGetInt(packet, &shift);
-  int op = ByteBufferGetInt(packet, &shift);
-  int IDprotocol = ByteBufferGetInt(packet, &shift);
-  char* username = ByteBufferGetString(packet, &shift);
-  char* password = ByteBufferGetString(packet, &shift);
-  char* roomName = ByteBufferGetString(packet, &shift);
-  printf("Error: '%d', Type: '%d', Operation: '%d', Protocol: '%d'", error, type, op, IDprotocol);
-  printf(", Username: '%s', Password: '%s', Room name: '%s'\n", username, password, roomName);
-}
-void readPacketToCreateRoomByClient(char* packet) {
-  int shift = 0;
-  int error = ByteBufferGetInt(packet, &shift);
-  int type = ByteBufferGetInt(packet, &shift);
-  int op = ByteBufferGetInt(packet, &shift);
-  int IDprotocol = ByteBufferGetInt(packet, &shift);
-  char* username = ByteBufferGetString(packet, &shift);
-  char* password = ByteBufferGetString(packet, &shift);
-  char* roomName = ByteBufferGetString(packet, &shift);
-  int numberOfUsers = ByteBufferGetInt(packet, &shift);
-  printf("Error: '%d', Type: '%d', Operation: '%d', Protocol: '%d'", error, type, op, IDprotocol);
-  printf(", Username: '%s', Password: '%s', Room name: '%s', Number of users: '%d'\n", username, password, roomName, numberOfUsers);
-}
-void readPacketToSendMessageByClient(char* packet) {
-  int shift = 0;
-  int error = ByteBufferGetInt(packet, &shift);
-  int type = ByteBufferGetInt(packet, &shift);
-  int op = ByteBufferGetInt(packet, &shift);
-  int IDprotocol = ByteBufferGetInt(packet, &shift);
-  char* username = ByteBufferGetString(packet, &shift);
-  char* roomName = ByteBufferGetString(packet, &shift);
-  char* message = ByteBufferGetString(packet, &shift);
-  printf("Error: '%d', Type: '%d', Operation: '%d', Protocol: '%d'", error, type, op, IDprotocol);
-  printf(", Username: '%s', RoomName: '%s', Message: '%s'\n", username, roomName, message);
-}
-void readPacketToExitByClient(char* packet) {
-  int shift = 0;
-  int error = ByteBufferGetInt(packet, &shift);
-  int type = ByteBufferGetInt(packet, &shift);
-  int op = ByteBufferGetInt(packet, &shift);
-  int IDprotocol = ByteBufferGetInt(packet, &shift);
-  char* username = ByteBufferGetString(packet, &shift);
-  char* password = ByteBufferGetString(packet, &shift);
-  printf("Error: '%d', Type: '%d', Operation: '%d', Protocol: '%d'", error, type, op, IDprotocol);
-  printf(", Username: '%s', Password: '%s'\n", username, password);
-}
-
-// Structure
-#define BUFFER_CLIENT_SIZE 512
-
-char SERVER_ADDRESS[16] = "127.0.0.1";
-int SERVER_PORT = 12345;
-int socketClient;
-int runningClient = 1;
-
-void setServerIP(char* ip) {
+// Methods
+void setServerIP(char *ip) {
   strncpy(SERVER_ADDRESS, ip, 15);
 }
 
@@ -184,8 +128,8 @@ void *sender(void *arg) {
     setbuf(stdin , NULL);
     scanf("%[^\n]", buffer);
     if (strlen(buffer) > 0) {
-      char* packet = createPacketToSendMessageByClient("Daniel", "room", buffer, &size);
-      send(socketClient, packet, size, 0);
+      char *packet = createPacketToSendMessageByClient("Daniel", "room", buffer, &size);
+      send(CLIENT_SOCKET, packet, size, 0);
       free(packet);
       printf("Send: %s\n", buffer);
       buffer[0] = 0;
@@ -198,7 +142,7 @@ void senderRunner(pthread_t* thread) {
 void *receiver(void *callback) {
   char buffer[BUFFER_CLIENT_SIZE + 1] = {0};
   while (runningClient) {
-    int numberOfBytes = read(socketClient, buffer, BUFFER_CLIENT_SIZE);
+    int numberOfBytes = read(CLIENT_SOCKET, buffer, BUFFER_CLIENT_SIZE);
     if (numberOfBytes == 0) {
       printf("Server disconnected\n");
       runningClient = 0;
@@ -214,8 +158,8 @@ void receiverRunner(pthread_t* thread, void (*callback)(void*)) {
 void initClientSocket() {
   int error;
 
-  socketClient = socket(AF_INET, SOCK_STREAM, 0);
-  rejectCriticalError("(socket) Failed to create client socket", socketClient == -1);
+  CLIENT_SOCKET = socket(AF_INET, SOCK_STREAM, 0);
+  rejectCriticalError("(socket) Failed to create client socket", CLIENT_SOCKET == -1);
 
   struct sockaddr_in serv_addr;
   serv_addr.sin_family = AF_INET;
@@ -223,6 +167,12 @@ void initClientSocket() {
   error = inet_pton(AF_INET, SERVER_ADDRESS, &serv_addr.sin_addr);
   rejectCriticalError("(inet_pton) Invalid address", error == -1);
 
-  error = connect(socketClient, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+  error = connect(CLIENT_SOCKET, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
   rejectCriticalError("(connect) Failed to connect with the server", error == -1);
+}
+int createRoom(char *username, char *password, char *roomName, int numberOfUsers) {
+  int size;
+  char *packet = createPacketToCreateRoomByClient(username, password, roomName, numberOfUsers, &size);
+  send(CLIENT_SOCKET, packet, size, 0);
+  return 0;
 }
