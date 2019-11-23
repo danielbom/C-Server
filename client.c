@@ -168,9 +168,14 @@ void readPacketToExitByClient(char* packet) {
 // Structure
 #define BUFFER_CLIENT_SIZE 512
 
-int socketPort = 12345;
+char SERVER_ADDRESS[16] = "127.0.0.1";
+int SERVER_PORT = 12345;
 int socketClient;
 int runningClient = 1;
+
+void setServerIP(char* ip) {
+  strncpy(SERVER_ADDRESS, ip, 15);
+}
 
 void *sender(void *arg) {
   char buffer[BUFFER_CLIENT_SIZE + 1] = {0};
@@ -178,11 +183,13 @@ void *sender(void *arg) {
   while (runningClient) {
     setbuf(stdin , NULL);
     scanf("%[^\n]", buffer);
-    char* packet = createPacketToSendMessageByClient("Daniel", "room", buffer, &size);
-    send(socketClient, packet, size, 0);
-    free(packet);
-    printf("Send: %s\n", buffer);
-    buffer[0] = 0;
+    if (strlen(buffer) > 0) {
+      char* packet = createPacketToSendMessageByClient("Daniel", "room", buffer, &size);
+      send(socketClient, packet, size, 0);
+      free(packet);
+      printf("Send: %s\n", buffer);
+      buffer[0] = 0;
+    }
   }
 }
 void senderRunner(pthread_t* thread) {
@@ -212,8 +219,8 @@ void initClientSocket() {
 
   struct sockaddr_in serv_addr;
   serv_addr.sin_family = AF_INET;
-  serv_addr.sin_port = htons(socketPort);
-  error = inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
+  serv_addr.sin_port = htons(SERVER_PORT);
+  error = inet_pton(AF_INET, SERVER_ADDRESS, &serv_addr.sin_addr);
   rejectCriticalError("(inet_pton) Invalid address", error == -1);
 
   error = connect(socketClient, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
