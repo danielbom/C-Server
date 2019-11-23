@@ -115,6 +115,7 @@ void testsClient() {
 void connectClient() {
   int valread;
 
+  setServerIP("127.0.0.1");
   initClientSocket();
 
   pthread_t thread;
@@ -122,7 +123,7 @@ void connectClient() {
   receiverRunner(&thread, NULL);
 
   printf("Loop...\n");
-  while (runningClient) {}
+  while (ClientProps.isRunning) {}
 }
 
 int main(int argc, char const *argv[]) {

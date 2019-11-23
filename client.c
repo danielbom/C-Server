@@ -13,15 +13,16 @@
 // Structure
 #define BUFFER_CLIENT_SIZE 512
 
-char USERNAME[65];
-char PASSWORD[65];
-char ROOMNAME[65];
-char SERVER_ADDRESS[16] = "127.0.0.1";
-int SERVER_PORT = 12345;
+struct {
+  char buffer[BUFFER_CLIENT_SIZE];
+  char username[64];
+  char password[64];
+  char roomname[64];
+  char server_address[16];
 
-int CLIENT_SOCKET;
-char CLIENT_BUFFER[BUFFER_CLIENT_SIZE + 1];
-int runningClient = 1;
+  int socket;
+  int isRunning;
+} ClientProps;
 
 // Sets
 void setUsernameOnPacket(char *packet, char *user) {
@@ -119,34 +120,38 @@ void *createPacketToExitByClient(char *username, char *password, int* shift) {
   return buffer;
 }
 
-void receivePacket(char *buffer, int size) {
-  int numberOfBytes = read(CLIENT_SOCKET, buffer, size);
+int receivePacket(char *buffer, int size) {
+  int numberOfBytes = read(ClientProps.socket, buffer, size);
   buffer[numberOfBytes] = 0;
+  return numberOfBytes;
+}
+void sendPacket(char *buffer, int size) {
+  send(ClientProps.socket, buffer, size, 0);
 }
 
 // Public methods
 void setServerIP(char *ip) {
-  strncpy(SERVER_ADDRESS, ip, 15);
+  strncpy(ClientProps.server_address, ip, 15);
 }
 void setUsername(char *username) {
-  strncpy(USERNAME, username, 64);
+  strncpy(ClientProps.username, username, 64);
 }
 void setPassword(char *password) {
-  strncpy(PASSWORD, password, 64);
+  strncpy(ClientProps.password, password, 64);
 }
 void setRoomname(char *roomname) {
-  strncpy(ROOMNAME, roomname, 64);
+  strncpy(ClientProps.roomname, roomname, 64);
 }
 
 void *sender(void *arg) {
   char buffer[BUFFER_CLIENT_SIZE + 1] = {0};
   int size;
-  while (runningClient) {
+  while (ClientProps.isRunning) {
     setbuf(stdin , NULL);
     scanf("%[^\n]", buffer);
     if (strlen(buffer) > 0) {
       char *packet = createPacketToSendMessageByClient("Daniel", "room", buffer, &size);
-      send(CLIENT_SOCKET, packet, size, 0);
+      sendPacket(packet, size);
       free(packet);
       printf("Send: %s\n", buffer);
       buffer[0] = 0;
@@ -158,13 +163,12 @@ void senderRunner(pthread_t* thread) {
 }
 void *receiver(void *callback) {
   char buffer[BUFFER_CLIENT_SIZE + 1] = {0};
-  while (runningClient) {
-    int numberOfBytes = read(CLIENT_SOCKET, buffer, BUFFER_CLIENT_SIZE);
+  while (ClientProps.isRunning) {
+    int numberOfBytes = receivePacket(buffer, BUFFER_CLIENT_SIZE);
     if (numberOfBytes == 0) {
       printf("Server disconnected\n");
-      runningClient = 0;
+      ClientProps.isRunning = 0;
     } else {
-      buffer[numberOfBytes] = 0;
       printf("Received: '%s'\n", buffer);
     }
   }
@@ -176,25 +180,28 @@ void receiverRunner(pthread_t* thread, void (*callback)(void*)) {
 void initClientSocket() {
   int error;
 
-  CLIENT_SOCKET = socket(AF_INET, SOCK_STREAM, 0);
-  rejectCriticalError("(socket) Failed to create client socket", CLIENT_SOCKET == -1);
+  ClientProps.socket = socket(AF_INET, SOCK_STREAM, 0);
+  rejectCriticalError("(socket) Failed to create client socket", ClientProps.socket == -1);
 
   struct sockaddr_in serv_addr;
   serv_addr.sin_family = AF_INET;
-  serv_addr.sin_port = htons(SERVER_PORT);
-  error = inet_pton(AF_INET, SERVER_ADDRESS, &serv_addr.sin_addr);
+  serv_addr.sin_port = htons(12345);
+  error = inet_pton(AF_INET, ClientProps.server_address, &serv_addr.sin_addr);
   rejectCriticalError("(inet_pton) Invalid address", error == -1);
 
-  error = connect(CLIENT_SOCKET, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+  error = connect(ClientProps.socket, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
   rejectCriticalError("(connect) Failed to connect with the server", error == -1);
+  
+  ClientProps.isRunning = 1;
 }
+
 int listRooms() {
   return 0;
 }
 int accessRoom() {
   int size;
-  char *packet = createPacketToAccessRoomByClient(USERNAME, PASSWORD, ROOMNAME, &size);
-  send(CLIENT_SOCKET, packet, size, 0);
+  char *packet = createPacketToAccessRoomByClient(ClientProps.username, ClientProps.password, ClientProps.roomname, &size);
+  send(ClientProps.socket, packet, size, 0);
 
   // receivePacket(packet, 256);
 
@@ -203,8 +210,8 @@ int accessRoom() {
 }
 int createRoom(int numberOfUsers) {
   int size;
-  char *packet = createPacketToCreateRoomByClient(USERNAME, PASSWORD, ROOMNAME, numberOfUsers, &size);
-  send(CLIENT_SOCKET, packet, size, 0);
+  char *packet = createPacketToCreateRoomByClient(ClientProps.username, ClientProps.password, ClientProps.roomname, numberOfUsers, &size);
+  send(ClientProps.socket, packet, size, 0);
   
   // receivePacket(packet, 256);
 
@@ -213,8 +220,8 @@ int createRoom(int numberOfUsers) {
 }
 int sendMessage(char *message) {
   int size;
-  char *packet = createPacketToSendMessageByClient(USERNAME, ROOMNAME, message, &size);
-  send(CLIENT_SOCKET, packet, size, 0);
+  char *packet = createPacketToSendMessageByClient(ClientProps.username, ClientProps.roomname, message, &size);
+  send(ClientProps.socket, packet, size, 0);
 
   free(packet);
   return 0;
