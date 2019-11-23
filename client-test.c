@@ -87,7 +87,7 @@ void testOnePacket(char *packet) {
 void testPackets() {
   int size;
   testOnePacket(createPacketToListRoomsByClient(&size));
-  testOnePacket(createPacketToConnectByClient("user-x", "123456", "-room-", &size));
+  testOnePacket(createPacketToAccessRoomByClient("user-x", "123456", "-room-", &size));
   testOnePacket(createPacketToCreateRoomByClient("user-x", "123456", "-room-", 2, &size));
   testOnePacket(createPacketToSendMessageByClient("user-x", "-room-", "Hello world!", &size));
   testOnePacket(createPacketToExitByClient("user-x", "123456", &size));
@@ -95,12 +95,12 @@ void testPackets() {
 
 void testErrors() {
   int size;
-  testOnePacket(createPacketToConnectByClient(NULL, "123456", "-room-", &size));
+  testOnePacket(createPacketToAccessRoomByClient(NULL, "123456", "-room-", &size));
   testOnePacket(createPacketToCreateRoomByClient("user-123", "123456", NULL, 2, &size));
   testOnePacket(createPacketToSendMessageByClient("user-123", "-room-", NULL, &size));
   testOnePacket(createPacketToExitByClient("user-123", NULL, &size));
   printf("\n");
-  testOnePacket(createPacketToConnectByClient(NULL, NULL, NULL, &size));
+  testOnePacket(createPacketToAccessRoomByClient(NULL, NULL, NULL, &size));
   testOnePacket(createPacketToCreateRoomByClient(NULL, NULL, NULL, 2, &size));
   testOnePacket(createPacketToSendMessageByClient(NULL, NULL, NULL, &size));
   testOnePacket(createPacketToExitByClient(NULL, NULL, &size));

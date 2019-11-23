@@ -13,6 +13,9 @@
 // Structure
 #define BUFFER_CLIENT_SIZE 512
 
+char USERNAME[65];
+char PASSWORD[65];
+char ROOMNAME[65];
 char SERVER_ADDRESS[16] = "127.0.0.1";
 int SERVER_PORT = 12345;
 
@@ -40,7 +43,7 @@ char* createPacketToListRoomsByClient(int* shift) {
   *shift = sizeof(int) * 4;
   return buffer;
 }
-char* createPacketToConnectByClient(char* username, char* password, char* roomName, int* shift) {
+char* createPacketToAccessRoomByClient(char* username, char* password, char* roomName, int* shift) {
   char *buffer = ByteBufferAllocate(256);
   setOperationOnPacket(buffer, OP_CONNECT);
   setTypeOnPacket(buffer, TYPE_CLIENT);
@@ -116,9 +119,23 @@ void *createPacketToExitByClient(char *username, char *password, int* shift) {
   return buffer;
 }
 
-// Methods
+void receivePacket(char *buffer, int size) {
+  int numberOfBytes = read(CLIENT_SOCKET, buffer, size);
+  buffer[numberOfBytes] = 0;
+}
+
+// Public methods
 void setServerIP(char *ip) {
   strncpy(SERVER_ADDRESS, ip, 15);
+}
+void setUsername(char *username) {
+  strncpy(USERNAME, username, 64);
+}
+void setPassword(char *password) {
+  strncpy(PASSWORD, password, 64);
+}
+void setRoomname(char *roomname) {
+  strncpy(ROOMNAME, roomname, 64);
 }
 
 void *sender(void *arg) {
@@ -155,6 +172,7 @@ void *receiver(void *callback) {
 void receiverRunner(pthread_t* thread, void (*callback)(void*)) {
   pthread_create(thread, NULL, receiver, callback);
 }
+
 void initClientSocket() {
   int error;
 
@@ -170,9 +188,34 @@ void initClientSocket() {
   error = connect(CLIENT_SOCKET, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
   rejectCriticalError("(connect) Failed to connect with the server", error == -1);
 }
-int createRoom(char *username, char *password, char *roomName, int numberOfUsers) {
+int listRooms() {
+  return 0;
+}
+int accessRoom() {
   int size;
-  char *packet = createPacketToCreateRoomByClient(username, password, roomName, numberOfUsers, &size);
+  char *packet = createPacketToAccessRoomByClient(USERNAME, PASSWORD, ROOMNAME, &size);
   send(CLIENT_SOCKET, packet, size, 0);
+
+  // receivePacket(packet, 256);
+
+  free(packet);
+  return 0;
+}
+int createRoom(int numberOfUsers) {
+  int size;
+  char *packet = createPacketToCreateRoomByClient(USERNAME, PASSWORD, ROOMNAME, numberOfUsers, &size);
+  send(CLIENT_SOCKET, packet, size, 0);
+  
+  // receivePacket(packet, 256);
+
+  free(packet);
+  return 0;
+}
+int sendMessage(char *message) {
+  int size;
+  char *packet = createPacketToSendMessageByClient(USERNAME, ROOMNAME, message, &size);
+  send(CLIENT_SOCKET, packet, size, 0);
+
+  free(packet);
   return 0;
 }
