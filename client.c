@@ -142,6 +142,12 @@ void setPassword(char *password) {
 void setRoomname(char *roomname) {
   strncpy(ClientProps.roomname, roomname, 64);
 }
+void stopRunning() {
+  ClientProps.isRunning = 0;
+}
+void startRunning() {
+  ClientProps.isRunning = 1;
+}
 
 void *sender(void *arg) {
   char buffer[BUFFER_CLIENT_SIZE + 1] = {0};
@@ -161,7 +167,7 @@ void *sender(void *arg) {
 void senderRunner(pthread_t* thread) {
   pthread_create(thread, NULL, sender, NULL);
 }
-void *receiver(void *callback) {
+void *receiver(void (*callback)(void*)) {
   char buffer[BUFFER_CLIENT_SIZE + 1] = {0};
   while (ClientProps.isRunning) {
     int numberOfBytes = receivePacket(buffer, BUFFER_CLIENT_SIZE);
@@ -169,7 +175,11 @@ void *receiver(void *callback) {
       printf("Server disconnected\n");
       ClientProps.isRunning = 0;
     } else {
-      printf("Received: '%s'\n", buffer);
+      if (callback != NULL) {
+        callback(buffer);
+      } else {
+        printf("Received: '%s'\n", buffer);
+      }
     }
   }
 }
@@ -191,8 +201,6 @@ void initClientSocket() {
 
   error = connect(ClientProps.socket, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
   rejectCriticalError("(connect) Failed to connect with the server", error == -1);
-  
-  ClientProps.isRunning = 1;
 }
 
 int listRooms() {

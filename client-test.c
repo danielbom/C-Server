@@ -123,6 +123,7 @@ void connectClient() {
   receiverRunner(&thread, NULL);
 
   printf("Loop...\n");
+  startRunning();
   while (ClientProps.isRunning) {}
 }
 
