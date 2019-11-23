@@ -17,19 +17,17 @@
 SocketAddrIn masterAddress;
 int masterAddressLength = 0;
 
-int masterID = 0;
+int ID = 0;
+fd_set FD;
+int FAMILY = AF_INET;           // AF_INET: Address family Internet Protocol v4 addresses
+int TYPE = SOCK_STREAM;         // SOCK_STREAM: Connection-based TCP
+int MASK_ADDRESS = INADDR_ANY; // Address to accept any incoming messages.
+int PORT = 12345;
 
-int masterFamily = AF_INET;           // AF_INET: Address family Internet Protocol v4 addresses
-int masterType = SOCK_STREAM;         // SOCK_STREAM: Connection-based TCP
-int masterMaskInAddress = INADDR_ANY; // Address to accept any incoming messages.
-int masterPort = 12345;
-
-int limitOfClients = 50;
-int filledClients = 0;
-int clientListSockets[50] = {0};
-int reservedRoomClients[50] = {0};
-fd_set systemSetDescriptor;
-
+int CLIENTS_LIMIT = 50;
+int CLIENTS_COUNT = 0;
+int CLIENTS_LIST[50] = {0};
+int CLIENTS_ROOMS[50] = {0};
 
 // Read
 void readPacketToListRoomsOfClient(int sd, char* packet) {
@@ -123,77 +121,77 @@ void readPacketOfClient(int sd, char* packet, int size) {
 void initMasterSocket() {
   int opt = 1, error;
 
-  masterID = socket(masterFamily, masterType, 0);
-  rejectCriticalError("(socket) Failed to create master socket", masterID == -1);
+  ID = socket(FAMILY, TYPE, 0);
+  rejectCriticalError("(socket) Failed to create master socket", ID == -1);
 
-  error = setsockopt(masterID, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(int));
+  error = setsockopt(ID, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(int));
   rejectCriticalError("(setsockopt) Failed to update master socket to allow multiples connections", error == -1);
 
   // Setup master socket
-  masterAddress.sin_family = masterFamily;
-  masterAddress.sin_addr.s_addr = masterMaskInAddress;
-  masterAddress.sin_port = htons(masterPort);
+  masterAddress.sin_family = FAMILY;
+  masterAddress.sin_addr.s_addr = MASK_ADDRESS;
+  masterAddress.sin_port = htons(PORT);
 
-  error = bind(masterID, (SocketAddr*) &masterAddress, sizeof(masterAddress));
+  error = bind(ID, (SocketAddr*) &masterAddress, sizeof(masterAddress));
   rejectCriticalError("(bind) Failed to bind master socket in give address", error == -1);
 
-  error = listen(masterID, 3);
+  error = listen(ID, 3);
   rejectCriticalError("(listen) Failed to prepare to accept connections", error == -1);
 
   printf(">>> Sizeof(masterAddress): %ld\n", sizeof(masterAddress));
-  printf(">>> Server socket listen on port '%d'\n", masterPort);
+  printf(">>> Server socket listen on port '%d'\n", PORT);
 }
 void loop() {
   char masterBuffer[BUFFER_SERVER_SIZE + 1];
-  int i, maxID = masterID;
+  int i, maxID = ID;
 
   while (1) {
-    FD_ZERO(&systemSetDescriptor);
+    FD_ZERO(&FD);
 
-    FD_SET(masterID, &systemSetDescriptor);
+    FD_SET(ID, &FD);
 
-    for (i = 0; i < limitOfClients; i++) {
-      int sd = clientListSockets[i]; // SocketDescriptor
+    for (i = 0; i < CLIENTS_LIMIT; i++) {
+      int sd = CLIENTS_LIST[i]; // SocketDescriptor
       if (sd > 0)
-        FD_SET(sd, &systemSetDescriptor);
+        FD_SET(sd, &FD);
       if (sd > maxID)
         maxID = sd;
     }
 
-    int id = select(maxID + 1, &systemSetDescriptor, NULL, NULL, NULL);
+    int id = select(maxID + 1, &FD, NULL, NULL, NULL);
     printf("ID: %d\n", id);
 
     if (id < -1 && errno != EINTR)
       printf("(select) Fail to select an ID of set of sockets\n");
     
-    if (FD_ISSET(masterID, &systemSetDescriptor)) {
-      if (filledClients == limitOfClients) {
+    if (FD_ISSET(ID, &FD)) {
+      if (CLIENTS_COUNT == CLIENTS_LIMIT) {
         printf("Server is full\n");
       } else {
-        int newSocket = accept(masterID, NULL, NULL);
+        int newSocket = accept(ID, NULL, NULL);
         rejectCriticalError("(accept) Error when master socket accept new connection\n", newSocket == -1);
 
         printf("New connection\n");
         showHostInfos(newSocket);
 
-        for (i = 0; i < limitOfClients; i++) {
-          if (clientListSockets[i] == 0) {
-            clientListSockets[i] = newSocket;
-            filledClients++;
+        for (i = 0; i < CLIENTS_LIMIT; i++) {
+          if (CLIENTS_LIST[i] == 0) {
+            CLIENTS_LIST[i] = newSocket;
+            CLIENTS_COUNT++;
             break;
           }
         }
       }
     }
 
-    for (i = 0; i < limitOfClients; i++) {
-      int sd = clientListSockets[i];
-      if (FD_ISSET(sd, &systemSetDescriptor)) {
+    for (i = 0; i < CLIENTS_LIMIT; i++) {
+      int sd = CLIENTS_LIST[i];
+      if (FD_ISSET(sd, &FD)) {
         int size = read(sd, masterBuffer, BUFFER_SERVER_SIZE);
         if (size == 0) {
           printf("Host disconnected\n");
           showHostInfos(sd);
-          clientListSockets[i] = 0;
+          CLIENTS_LIST[i] = 0;
           break;
         } else { // Broadcast
           printf("Broadcast %d\n", size);
