@@ -92,9 +92,9 @@ void readPacketOfClient(int sd, char* packet, int size) {
     printf("LOG: Malformed packet\n");
     return;
   }
-  int error = getErrorOfPacket(packet);
+  int error = PacketGetError(packet);
   if (!error) {
-    int op = getOperationOfPacket(packet);
+    int op = PacketGetOperation(packet);
     switch(op) {
       case OP_LIST:
       readPacketToListRoomsOfClient(sd, packet);
@@ -113,7 +113,7 @@ void readPacketOfClient(int sd, char* packet, int size) {
       break;
     }
   } else {
-    checkErrorOfServer(error);
+    PacketCheckError(error);
   }
 }
 

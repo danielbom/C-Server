@@ -26,30 +26,30 @@ enum {
 int PROTOCOL_ID = 28456;
 
 // Gets
-int getErrorOfPacket(char* packet) {
+int PacketGetError(char* packet) {
   return ByteBufferGetIntAbs(packet, 0);
 }
-int getTypeOfPacket(char* packet) {
+int PacketGetType(char* packet) {
   return ByteBufferGetIntAbs(packet, sizeof(int));
 }
-int getOperationOfPacket(char* packet) {
+int PacketGetOperation(char* packet) {
   return ByteBufferGetIntAbs(packet, sizeof(int) * 2);
 }
-int getIDProtoocolPacket(char* packet) {
+int PacketGetProtocolID(char* packet) {
   return ByteBufferGetIntAbs(packet, sizeof(int) * 3);
 }
 
 // Sets
-void setErrorOnPacket(char* packet, int value) {
+void PacketSetError(char* packet, int value) {
   ByteBufferPutIntAbs(packet, 0, value);
 }
-void setTypeOnPacket(char* packet, int value) {
+void PacketSetType(char* packet, int value) {
   ByteBufferPutIntAbs(packet, sizeof(int), value);
 }
-void setOperationOnPacket(char* packet, int value) {
+void PacketSetOperation(char* packet, int value) {
   ByteBufferPutIntAbs(packet, sizeof(int) * 2, value);
 }
-void setIDProtocolPacket(char* packet) {
+void PacketSetProtocolID(char* packet) {
   ByteBufferPutIntAbs(packet, sizeof(int) * 3, PROTOCOL_ID);
 }
 
@@ -72,7 +72,7 @@ int isNull(char* str) {
   return str == NULL;
 }
 
-void checkErrorOfServer(int error) {
+void PacketCheckError(int error) {
   if (error) printf("ERROR: ");
   switch (error) {
     case 1:

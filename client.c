@@ -25,37 +25,37 @@ struct {
 } ClientProps;
 
 // Sets
-void setUsernameOnPacket(char *packet, char *user) {
+void PacketSetUsername(char *packet, char *user) {
   strncat(packet + (sizeof(int) * 3), user, 63);
 }
-void setPasswordOnPacket(char *packet, char *pass) {
+void PacketSetPassword(char *packet, char *pass) {
   strncat(packet + (sizeof(int) * 3) + 64, pass, 63);
 }
-void setNameRoomOnPacket(char *packet, char *room) {
+void PacketSetRoomName(char *packet, char *room) {
   strncat(packet + (sizeof(int) * 3) + (64 * 2), room, 63);
 }
 
 // Create
-char* createPacketToListRoomsByClient(int* shift) {
+char* PacketClientListRooms(int* shift) {
   char *buffer = ByteBufferAllocate(16);
-  setOperationOnPacket(buffer, OP_LIST);
-  setTypeOnPacket(buffer, TYPE_CLIENT);
-  setIDProtocolPacket(buffer);
+  PacketSetOperation(buffer, OP_LIST);
+  PacketSetType(buffer, TYPE_CLIENT);
+  PacketSetProtocolID(buffer);
   *shift = sizeof(int) * 4;
   return buffer;
 }
-char* createPacketToAccessRoomByClient(char* username, char* password, char* roomName, int* shift) {
+char* PacketClientAccessRoom(char* username, char* password, char* roomName, int* shift) {
   char *buffer = ByteBufferAllocate(256);
-  setOperationOnPacket(buffer, OP_CONNECT);
-  setTypeOnPacket(buffer, TYPE_CLIENT);
-  setIDProtocolPacket(buffer);
+  PacketSetOperation(buffer, OP_CONNECT);
+  PacketSetType(buffer, TYPE_CLIENT);
+  PacketSetProtocolID(buffer);
   *shift = sizeof(int) * 4;
 
   int error = 0;
   error = isNull(roomName) ? 3 : error;
   error = isNull(password) ? 2 : error;
   error = isNull(username) ? 1 : error;
-  setErrorOnPacket(buffer, error);
+  PacketSetError(buffer, error);
   if (error) return buffer;
 
   ByteBufferPutString(buffer, shift, username, 64);
@@ -63,18 +63,18 @@ char* createPacketToAccessRoomByClient(char* username, char* password, char* roo
   ByteBufferPutString(buffer, shift, roomName, 64);
   return buffer;
 }
-char* createPacketToCreateRoomByClient(char* username, char* password, char* roomName, int numberOfUsers, int* shift) {
+char* PacketClientCreateRoom(char* username, char* password, char* roomName, int numberOfUsers, int* shift) {
   char *buffer = ByteBufferAllocate(256);
-  setOperationOnPacket(buffer, OP_CREATE_ROOM);
-  setTypeOnPacket(buffer, TYPE_CLIENT);
-  setIDProtocolPacket(buffer);
+  PacketSetOperation(buffer, OP_CREATE_ROOM);
+  PacketSetType(buffer, TYPE_CLIENT);
+  PacketSetProtocolID(buffer);
   *shift = sizeof(int) * 4;
 
   int error = 0;
   error = isNull(roomName) ? 3 : error;
   error = isNull(password) ? 2 : error;
   error = isNull(username) ? 1 : error;
-  setErrorOnPacket(buffer, error);
+  PacketSetError(buffer, error);
   if (error) return buffer;
 
   ByteBufferPutString(buffer, shift, username, 64);
@@ -83,18 +83,18 @@ char* createPacketToCreateRoomByClient(char* username, char* password, char* roo
   ByteBufferPutInt(buffer, shift, numberOfUsers);
   return buffer;
 }
-void *createPacketToSendMessageByClient(char* username, char* roomName, char* message, int* shift) {
+void *PacketClientSendMessage(char* username, char* roomName, char* message, int* shift) {
   char *buffer = ByteBufferAllocate(512);
-  setOperationOnPacket(buffer, OP_SEND_MESSAGE);
-  setTypeOnPacket(buffer, TYPE_CLIENT);
-  setIDProtocolPacket(buffer);
+  PacketSetOperation(buffer, OP_SEND_MESSAGE);
+  PacketSetType(buffer, TYPE_CLIENT);
+  PacketSetProtocolID(buffer);
   *shift = sizeof(int) * 4;
 
   int error = 0;
   error = isNull(message) ? 4 : error;
   error = isNull(roomName) ? 3 : error;
   error = isNull(username) ? 1 : error;
-  setErrorOnPacket(buffer, error);
+  PacketSetError(buffer, error);
   if (error) return buffer;
 
   ByteBufferPutString(buffer, shift, username, 64);
@@ -102,17 +102,17 @@ void *createPacketToSendMessageByClient(char* username, char* roomName, char* me
   ByteBufferPutString(buffer, shift, message, 256);
   return buffer;
 }
-void *createPacketToExitByClient(char *username, char *password, int* shift) {
+void *PacketClientExit(char *username, char *password, int* shift) {
   char *buffer = ByteBufferAllocate(256);
-  setOperationOnPacket(buffer, OP_EXIT);
-  setTypeOnPacket(buffer, TYPE_CLIENT);
-  setIDProtocolPacket(buffer);
+  PacketSetOperation(buffer, OP_EXIT);
+  PacketSetType(buffer, TYPE_CLIENT);
+  PacketSetProtocolID(buffer);
   *shift = sizeof(int) * 4;
 
   int error = 0;
   error = isNull(password) ? 2 : error;
   error = isNull(username) ? 1 : error;
-  setErrorOnPacket(buffer, error);
+  PacketSetError(buffer, error);
   if (error) return buffer;
 
   ByteBufferPutString(buffer, shift, username, 64);
@@ -120,74 +120,73 @@ void *createPacketToExitByClient(char *username, char *password, int* shift) {
   return buffer;
 }
 
-int receivePacket(char *buffer, int size) {
+int PacketReceive(char *buffer, int size) {
   int numberOfBytes = read(ClientProps.socket, buffer, size);
   buffer[numberOfBytes] = 0;
   return numberOfBytes;
 }
-void sendPacket(char *buffer, int size) {
+void PacketSend(char *buffer, int size) {
   send(ClientProps.socket, buffer, size, 0);
 }
 
 // Public methods
-void setServerIP(char *ip) {
+void ClientSetServerIP(char *ip) {
   strncpy(ClientProps.server_address, ip, 15);
 }
-void setUsername(char *username) {
+void ClientSetUsername(char *username) {
   strncpy(ClientProps.username, username, 64);
 }
-void setPassword(char *password) {
+void ClientSetPassword(char *password) {
   strncpy(ClientProps.password, password, 64);
 }
-void setRoomname(char *roomname) {
+void ClientSetRoomName(char *roomname) {
   strncpy(ClientProps.roomname, roomname, 64);
 }
-void stopRunning() {
+void ClientStopRunning() {
   ClientProps.isRunning = 0;
 }
-void startRunning() {
+void ClientStartRunning() {
   ClientProps.isRunning = 1;
 }
 
-void *sender(void *arg) {
+void *ClientSender(void *arg) {
   char buffer[BUFFER_CLIENT_SIZE + 1] = {0};
   int size;
   while (ClientProps.isRunning) {
     setbuf(stdin , NULL);
     scanf("%[^\n]", buffer);
     if (strlen(buffer) > 0) {
-      char *packet = createPacketToSendMessageByClient("Daniel", "room", buffer, &size);
-      sendPacket(packet, size);
+      char *packet = PacketClientSendMessage("Daniel", "room", buffer, &size);
+      PacketSend(packet, size);
       free(packet);
       printf("Send: %s\n", buffer);
       buffer[0] = 0;
     }
   }
 }
-void senderRunner(pthread_t* thread) {
-  pthread_create(thread, NULL, sender, NULL);
+void ClientSenderRun(pthread_t* thread) {
+  pthread_create(thread, NULL, ClientSender, NULL);
 }
-void *receiver(void (*callback)(void*)) {
+void *ClientReceiver(void* callback) {
   char buffer[BUFFER_CLIENT_SIZE + 1] = {0};
   while (ClientProps.isRunning) {
-    int numberOfBytes = receivePacket(buffer, BUFFER_CLIENT_SIZE);
+    int numberOfBytes = PacketReceive(buffer, BUFFER_CLIENT_SIZE);
     if (numberOfBytes == 0) {
       printf("Server disconnected\n");
       ClientProps.isRunning = 0;
     } else {
       if (callback != NULL) {
-        callback(buffer);
       } else {
         printf("Received: '%s'\n", buffer);
       }
     }
   }
 }
-void receiverRunner(pthread_t* thread, void (*callback)(void*)) {
-  pthread_create(thread, NULL, receiver, callback);
+void ClientReceiverRun(pthread_t* thread, void (*callback)(void*)) {
+  pthread_create(thread, NULL, ClientReceiver, callback);
 }
 
-void initClientSocket() {
+void ClientInit() {
   int error;
 
   ClientProps.socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -203,32 +202,32 @@ void initClientSocket() {
   rejectCriticalError("(connect) Failed to connect with the server", error == -1);
 }
 
-int listRooms() {
-  return 0;
+char* ClientListRooms() {
+  return NULL;
 }
-int accessRoom() {
+int ClientAccessRoom() {
   int size;
-  char *packet = createPacketToAccessRoomByClient(ClientProps.username, ClientProps.password, ClientProps.roomname, &size);
+  char *packet = PacketClientAccessRoom(ClientProps.username, ClientProps.password, ClientProps.roomname, &size);
   send(ClientProps.socket, packet, size, 0);
 
-  // receivePacket(packet, 256);
+  // PacketReceive(packet, 256);
 
   free(packet);
   return 0;
 }
-int createRoom(int numberOfUsers) {
+int ClientCreateRoom(int numberOfUsers) {
   int size;
-  char *packet = createPacketToCreateRoomByClient(ClientProps.username, ClientProps.password, ClientProps.roomname, numberOfUsers, &size);
+  char *packet = PacketClientCreateRoom(ClientProps.username, ClientProps.password, ClientProps.roomname, numberOfUsers, &size);
   send(ClientProps.socket, packet, size, 0);
   
-  // receivePacket(packet, 256);
+  // PacketReceive(packet, 256);
 
   free(packet);
   return 0;
 }
-int sendMessage(char *message) {
+int ClientSendMessage(char *message) {
   int size;
-  char *packet = createPacketToSendMessageByClient(ClientProps.username, ClientProps.roomname, message, &size);
+  char *packet = PacketClientSendMessage(ClientProps.username, ClientProps.roomname, message, &size);
   send(ClientProps.socket, packet, size, 0);
 
   free(packet);
