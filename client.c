@@ -149,43 +149,6 @@ void ClientStartRunning() {
   ClientProps.isRunning = 1;
 }
 
-void *ClientSender(void *arg) {
-  char buffer[BUFFER_CLIENT_SIZE + 1] = {0};
-  int size;
-  while (ClientProps.isRunning) {
-    setbuf(stdin , NULL);
-    scanf("%[^\n]", buffer);
-    if (strlen(buffer) > 0) {
-      char *packet = PacketClientSendMessage("Daniel", "room", buffer, &size);
-      PacketSend(packet, size);
-      free(packet);
-      printf("Send: %s\n", buffer);
-      buffer[0] = 0;
-    }
-  }
-}
-void ClientSenderRun(pthread_t* thread) {
-  pthread_create(thread, NULL, ClientSender, NULL);
-}
-void *ClientReceiver(void* callback) {
-  char buffer[BUFFER_CLIENT_SIZE + 1] = {0};
-  while (ClientProps.isRunning) {
-    int numberOfBytes = PacketReceive(buffer, BUFFER_CLIENT_SIZE);
-    if (numberOfBytes == 0) {
-      printf("Server disconnected\n");
-      ClientProps.isRunning = 0;
-    } else {
-      if (callback != NULL) {
-      } else {
-        printf("Received: '%s'\n", buffer);
-      }
-    }
-  }
-}
-void ClientReceiverRun(pthread_t* thread, void (*callback)(void*)) {
-  pthread_create(thread, NULL, ClientReceiver, callback);
-}
-
 void ClientInit() {
   int error;
 
@@ -232,4 +195,43 @@ int ClientSendMessage(char *message) {
 
   free(packet);
   return 0;
+}
+
+// Runners
+void *ClientSender(void *arg) {
+  char buffer[BUFFER_CLIENT_SIZE + 1] = {0};
+  int size;
+  while (ClientProps.isRunning) {
+    scanf(" %[^\n]", buffer);
+    if (strlen(buffer) > 0) {
+      ClientSendMessage(buffer);
+      printf("Send: %s\n", buffer);
+      buffer[0] = 0;
+    }
+  }
+}
+void ClientSenderRun(pthread_t* thread) {
+  pthread_create(thread, NULL, ClientSender, NULL);
+}
+
+void *ClientReceiver(void* callback) {
+  void (*callable)(char*) = callback;
+
+  char buffer[BUFFER_CLIENT_SIZE + 1] = {0};
+  while (ClientProps.isRunning) {
+    int numberOfBytes = PacketReceive(buffer, BUFFER_CLIENT_SIZE);
+    if (numberOfBytes == 0) {
+      printf("Server disconnected\n");
+      ClientProps.isRunning = 0;
+    } else {
+      if (callable != NULL) {
+        callable(buffer);
+      } else {
+        printf("Received: '%s'\n", buffer);
+      }
+    }
+  }
+}
+void ClientReceiverRun(pthread_t* thread, void (*callback)(void*)) {
+  pthread_create(thread, NULL, ClientReceiver, callback);
 }
