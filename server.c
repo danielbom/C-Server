@@ -30,7 +30,7 @@ int CLIENTS_LIST[50] = {0};
 int CLIENTS_ROOMS[50] = {0};
 
 // Read
-void readPacketToListRoomsOfClient(int sd, char* packet) {
+void ServerReadPacketListRooms(int sd, char* packet) {
   int shift = 0;
   int error = ByteBufferGetInt(packet, &shift);
   int type = ByteBufferGetInt(packet, &shift);
@@ -39,7 +39,7 @@ void readPacketToListRoomsOfClient(int sd, char* packet) {
   printf("Error: '%d', Type: '%d', Operation: '%d'", error, type, op);
   printf("\n");
 }
-void readPacketToConnectOfClient(int sd, char* packet) {
+void ServerReadPacketConnect(int sd, char* packet) {
   int shift = 0;
   int error = ByteBufferGetInt(packet, &shift);
   int type = ByteBufferGetInt(packet, &shift);
@@ -51,7 +51,7 @@ void readPacketToConnectOfClient(int sd, char* packet) {
   printf("Error: '%d', Type: '%d', Operation: '%d'", error, type, op);
   printf(", Username: '%s', Password: '%s', Room name: '%s'\n", username, password, roomName);
 }
-void readPacketToCreateRoomOfClient(int sd, char* packet) {
+void ServerReadPacketCreateRoom(int sd, char* packet) {
   int shift = 0;
   int error = ByteBufferGetInt(packet, &shift);
   int type = ByteBufferGetInt(packet, &shift);
@@ -64,7 +64,7 @@ void readPacketToCreateRoomOfClient(int sd, char* packet) {
   printf("Error: '%d', Type: '%d', Operation: '%d'", error, type, op);
   printf(", Username: '%s', Password: '%s', Room name: '%s', Number of users: '%d'\n", username, password, roomName, numberOfUsers);
 }
-void readPacketToSendMessageOfClient(int sd, char* packet) {
+void ServerReadPacketSendMessage(int sd, char* packet) {
   int shift = 0;
   int error = ByteBufferGetInt(packet, &shift);
   int type = ByteBufferGetInt(packet, &shift);
@@ -76,7 +76,7 @@ void readPacketToSendMessageOfClient(int sd, char* packet) {
   printf("Error: '%d', Type: '%d', Operation: '%d'", error, type, op);
   printf(", Username: '%s', RoomName: '%s', Message: '%s'\n", username, roomName, message);
 }
-void readPacketToExitOfClient(int sd, char* packet) {
+void ServerReadPacketExit(int sd, char* packet) {
   int shift = 0;
   int error = ByteBufferGetInt(packet, &shift);
   int type = ByteBufferGetInt(packet, &shift);
@@ -87,7 +87,8 @@ void readPacketToExitOfClient(int sd, char* packet) {
   printf("Error: '%d', Type: '%d', Operation: '%d'", error, type, op);
   printf(", Username: '%s', Password: '%s'\n", username, password);
 }
-void readPacketOfClient(int sd, char* packet, int size) {
+
+void ServerReadPacket(int sd, char* packet, int size) {
   if (size < (4 * sizeof(int))) {
     printf("LOG: Malformed packet\n");
     return;
@@ -97,19 +98,19 @@ void readPacketOfClient(int sd, char* packet, int size) {
     int op = PacketGetOperation(packet);
     switch(op) {
       case OP_LIST:
-      readPacketToListRoomsOfClient(sd, packet);
+      ServerReadPacketListRooms(sd, packet);
       break;
       case OP_CONNECT:
-      readPacketToConnectOfClient(sd, packet);
+      ServerReadPacketConnect(sd, packet);
       break;
       case OP_CREATE_ROOM:
-      readPacketToCreateRoomOfClient(sd, packet);
+      ServerReadPacketCreateRoom(sd, packet);
       break;
       case OP_SEND_MESSAGE:
-      readPacketToSendMessageOfClient(sd, packet);
+      ServerReadPacketSendMessage(sd, packet);
       break;
       case OP_EXIT:
-      readPacketToExitOfClient(sd, packet);
+      ServerReadPacketExit(sd, packet);
       break;
     }
   } else {
@@ -117,7 +118,7 @@ void readPacketOfClient(int sd, char* packet, int size) {
   }
 }
 
-void initMasterSocket() {
+void ServerInit() {
   int opt = 1, error;
 
   ID = socket(FAMILY, TYPE, 0);
@@ -140,7 +141,7 @@ void initMasterSocket() {
   printf(">>> Sizeof(masterAddress): %ld\n", sizeof(masterAddress));
   printf(">>> Server socket listen on port '%d'\n", PORT);
 }
-void loop() {
+void ServerExecute() {
   char buffer[BUFFER_SERVER_SIZE + 1];
   int i, maxID = ID;
 
@@ -197,7 +198,7 @@ void loop() {
           printf("Broadcast %d\n", size);
           printf("Received: '%s'\n", buffer);
           showHostInfos(sd);
-          readPacketOfClient(sd, buffer, size);
+          ServerReadPacket(sd, buffer, size);
           break;
         }
       }
@@ -206,7 +207,7 @@ void loop() {
 }
 
 int main() {
-  initMasterSocket();
-  loop();
+  ServerInit();
+  ServerExecute();
   return 0;
 }
