@@ -196,6 +196,11 @@ void ServerExecute() {
         } else {
           buffer[size] = 0;
           printf("Broadcast %d\n", size);
+          for (int j = 0; j < CLIENTS_LIMIT; j++) {
+            int sd2 = CLIENTS_LIST[j];
+            if (sd2 != sd)
+              send(sd2, buffer, size, 0);
+          }
           printf("Received: '%s'\n", buffer);
           showHostInfos(sd);
           ServerReadPacket(sd, buffer, size);

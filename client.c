@@ -22,7 +22,9 @@ struct {
 
   int socket;
   int isRunning;
-} ClientProps;
+
+  void (*callback_receiver)(char*, char*);
+} ClientProps = {0};
 
 // Sets
 void PacketSetUsername(char *packet, char *user) {
@@ -130,6 +132,10 @@ void PacketSend(char *buffer, int size) {
 }
 
 // Public methods
+void ClientSetReceiveHandle(void* callback) {
+  ClientProps.callback_receiver = callback;
+}
+
 void ClientSetServerIP(char *ip) {
   strncpy(ClientProps.server_address, ip, 15);
 }
@@ -199,13 +205,13 @@ int ClientSendMessage(char *message) {
 
 // Runners
 void *ClientSender(void *arg) {
+  ClientStartRunning();
   char buffer[BUFFER_CLIENT_SIZE + 1] = {0};
   int size;
   while (ClientProps.isRunning) {
     scanf(" %[^\n]", buffer);
     if (strlen(buffer) > 0) {
       ClientSendMessage(buffer);
-      printf("Send: %s\n", buffer);
       buffer[0] = 0;
     }
   }
@@ -214,8 +220,9 @@ void ClientSenderRun(pthread_t* thread) {
   pthread_create(thread, NULL, ClientSender, NULL);
 }
 
-void *ClientReceiver(void* callback) {
-  void (*callable)(char*) = callback;
+void *ClientReceiver(void *arg) {
+  ClientStartRunning();
+  void (*callable)(char*, char*) = ClientProps.callback_receiver;
 
   char buffer[BUFFER_CLIENT_SIZE + 1] = {0};
   while (ClientProps.isRunning) {
@@ -225,13 +232,20 @@ void *ClientReceiver(void* callback) {
       ClientProps.isRunning = 0;
     } else {
       if (callable != NULL) {
-        callable(buffer);
-      } else {
-        printf("Received: '%s'\n", buffer);
+        int shift      = 0;
+        int error      = ByteBufferGetInt(buffer, &shift);
+        int type       = ByteBufferGetInt(buffer, &shift);
+        int op         = ByteBufferGetInt(buffer, &shift);
+        int IDprotocol = ByteBufferGetInt(buffer, &shift);
+        char *username = ByteBufferGetString(buffer, &shift);
+        char *roomName = ByteBufferGetString(buffer, &shift);
+        char *message  = ByteBufferGetString(buffer, &shift);
+        if (strcmp(roomName, ClientProps.roomname) == 0) 
+          callable(username, message);
       }
     }
   }
 }
-void ClientReceiverRun(pthread_t* thread, void (*callback)(void*)) {
-  pthread_create(thread, NULL, ClientReceiver, callback);
+void ClientReceiverRun(pthread_t* thread) {
+  pthread_create(thread, NULL, ClientReceiver, NULL);
 }

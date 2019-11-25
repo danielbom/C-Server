@@ -112,23 +112,27 @@ void testsClient() {
   testErrors();
 }
 
-void receiverHandle(char* buffer) {
-  printf("Receiver Handle: '%s'\n", buffer);
+void receiverHandle(char* username, char* message) {
+  printf("[%s]: %s\n", username, message);
 }
 
 void testConnectClient() {
   int valread;
 
-  ClientSetUsername("Daniel");
+  char username[64];
+  printf("Username: ");
+  scanf("%[^\n]s", username);
+
+  ClientSetReceiveHandle(receiverHandle);
+  ClientSetUsername(username);
   ClientSetPassword("pass");
   ClientSetRoomName("room");
   ClientSetServerIP("127.0.0.1");
   ClientInit();
 
   pthread_t thread;
-  ClientStartRunning();
   ClientSenderRun(&thread);
-  ClientReceiverRun(&thread, receiverHandle);
+  ClientReceiverRun(&thread);
 
   printf("Loop...\n");
   while (ClientProps.isRunning) {}
